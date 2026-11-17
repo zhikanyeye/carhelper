@@ -15,6 +15,10 @@ if (!defined('SITE_URL')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title : '车友帮讯联 - 便捷的车友留言平台'; ?></title>
+    <?php if (function_exists('is_logged_in') && is_logged_in()): ?>
+    <!-- CSRF token：供 JS 请求（X-CSRF-Token 头）与表单使用 -->
+    <meta name="csrf-token" content="<?php echo generate_csrf_token(); ?>">
+    <?php endif; ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
     <link href="<?php echo SITE_URL; ?>/css/style.css" rel="stylesheet">

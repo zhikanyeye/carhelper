@@ -16,26 +16,45 @@ require_once $functions_path;
 // 记录访问日志
 log_browser_access('anti_block_page');
 
-// 获取目标URL
+/**
+ * 校验跳转目标：仅允许本站 URL 或站内相对路径
+ * 防止开放重定向（//evil.com、http://evil.com）与 javascript: 等危险 scheme
+ */
+function is_safe_redirect_target($url) {
+    if (!is_string($url) || $url === '') {
+        return false;
+    }
+    // 显式拒绝 script 可执行类 scheme
+    if (preg_match('/^\s*(javascript|data|vbscript)\s*:/i', $url)) {
+        return false;
+    }
+    if (preg_match('#^[a-z][a-z0-9+.\-]*://#i', $url)) {
+        // 带协议的完整 URL：必须与本站同域
+        $host = parse_url($url, PHP_URL_HOST);
+        $self_host = $_SERVER['HTTP_HOST'] ?? '';
+        return $host !== null && $self_host !== '' && strcasecmp($host, $self_host) === 0;
+    }
+    // 相对路径：必须以单个 / 开头（拒绝 //evil.com 协议相对形式）
+    return $url[0] === '/' && ($url[1] ?? '') !== '/';
+}
+
+// 获取目标URL并校验，不合法时回退到站点首页
 $target_url = $_GET['target'] ?? '';
 $uuid = $_GET['uuid'] ?? '';
 
-// 如果没有目标URL，重定向到首页
-if (empty($target_url)) {
-    $target_url = defined('SITE_URL') ? SITE_URL : './';
+$decoded_target = urldecode($target_url);
+if (!is_safe_redirect_target($decoded_target)) {
+    $decoded_target = defined('SITE_URL') ? SITE_URL : '/';
 }
 
-// 如果不是内置浏览器，直接跳转
+// 如果不是内置浏览器，直接跳转（目标已校验）
 if (!needs_anti_block_redirect()) {
-    header("Location: " . urldecode($target_url));
+    header("Location: " . $decoded_target);
     exit;
 }
 
 // 获取浏览器名称
 $browser_name = get_browser_name();
-
-// 解码目标URL
-$decoded_target = urldecode($target_url);
 
 // 检测操作系统
 $is_ios = strpos($_SERVER['HTTP_USER_AGENT'], 'iPhone') !== false || 
@@ -480,7 +499,7 @@ $is_android = strpos($_SERVER['HTTP_USER_AGENT'], 'Android') !== false;
             if (!detectInAppBrowser()) {
                 console.log('检测到外部浏览器，准备跳转...');
                 setTimeout(() => {
-                    window.location.href = '<?php echo addslashes($decoded_target); ?>';
+                    window.location.href = <?php echo json_encode($decoded_target); ?>;
                 }, 1000);
                 
                 // 显示跳转提示
@@ -600,7 +619,7 @@ $is_android = strpos($_SERVER['HTTP_USER_AGENT'], 'Android') !== false;
         document.getElementById('openBtn').addEventListener('click', function(e) {
             e.preventDefault();
             
-            const targetUrl = '<?php echo addslashes($decoded_target); ?>';
+            const targetUrl = <?php echo json_encode($decoded_target); ?>;
             const host = targetUrl.replace(/^https?:\/\//, '');
             
             showMessage('正在尝试打开浏览器...');

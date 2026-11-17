@@ -13,24 +13,30 @@ if (php_sapi_name() !== 'cli') {
     }
 }
 
-// 加载邮件配置
-require_once __DIR__ . '/config/email.php';
+// 加载邮件配置（本文件位于 includes/ 下，配置在上级 config/ 目录）
+require_once __DIR__ . '/../config/email.php';
+
+// worker 进程独立运行，不经过 config.php，需自行设置时区
+if (function_exists('date_default_timezone_set')) {
+    date_default_timezone_set('Asia/Shanghai');
+}
 
 // 设置执行时间限制
 set_time_limit(60); // 最多运行60秒
 
 // 处理邮件队列
 function processEmailQueue() {
-    $cacheDir = __DIR__ . '/cache';
+    // 统一使用 email.php 中定义的队列目录（根目录 cache/email_queue/）
+    $queueDir = defined('EMAIL_QUEUE_DIR') ? EMAIL_QUEUE_DIR : __DIR__ . '/../cache/email_queue';
     $processedCount = 0;
     $maxEmails = 10; // 每次最多处理10封邮件
-    
-    if (!is_dir($cacheDir)) {
+
+    if (!is_dir($queueDir)) {
         return 0;
     }
-    
+
     // 获取所有待处理的邮件文件
-    $emailFiles = glob($cacheDir . '/email_*.json');
+    $emailFiles = glob($queueDir . '/*.json');
     
     if (empty($emailFiles)) {
         return 0;
@@ -57,7 +63,9 @@ function processEmailQueue() {
             }
             
             // 检查是否过期（超过24小时的邮件放弃发送）
-            if (time() - $emailData['timestamp'] > 86400) {
+            // queueEmail 写入的字段是 created_at，兼容旧的 timestamp 字段
+            $queuedAt = $emailData['created_at'] ?? $emailData['timestamp'] ?? filemtime($emailFile);
+            if (time() - (int)$queuedAt > 86400) {
                 error_log("邮件已过期，放弃发送：" . $emailData['to']);
                 unlink($emailFile);
                 continue;
@@ -101,14 +109,14 @@ function processEmailQueue() {
 
 // 清理过期的邮件文件
 function cleanupExpiredEmails() {
-    $cacheDir = __DIR__ . '/cache';
+    $queueDir = defined('EMAIL_QUEUE_DIR') ? EMAIL_QUEUE_DIR : __DIR__ . '/../cache/email_queue';
     $cleanedCount = 0;
-    
-    if (!is_dir($cacheDir)) {
+
+    if (!is_dir($queueDir)) {
         return 0;
     }
-    
-    $emailFiles = glob($cacheDir . '/email_*.json');
+
+    $emailFiles = glob($queueDir . '/*.json');
     
     foreach ($emailFiles as $emailFile) {
         // 删除超过24小时的文件

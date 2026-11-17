@@ -16,6 +16,21 @@ if (!is_logged_in() || !is_admin()) {
 
 $action = $_GET['action'] ?? '';
 
+// 写操作必须携带有效的 CSRF token（表单字段或 X-CSRF-Token 请求头）
+$write_actions = [
+    'verify_user_email', 'delete_user', 'blacklist_user',
+    'add_blacklist', 'remove_blacklist',
+    'process_email_queue', 'clean_email_queue', 'auto_cleanup',
+];
+if (in_array($action, $write_actions, true)) {
+    $csrf_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'CSRF 校验失败，请刷新页面重试']);
+        exit;
+    }
+}
+
 switch ($action) {
     case 'users':
         $users = get_users_list();
@@ -252,12 +267,13 @@ function render_users_table($users) {
         }
         
         // 删除用户按钮（不能删除管理员）
+        // 用户名经 ENT_QUOTES 转义后放入 data 属性，onclick 从 dataset 读取，避免属性上下文注入
         if (!$user['is_admin']) {
-            $delete_btn = '<button class="btn btn-sm btn-warning me-1" onclick="deleteUser(' . $user['id'] . ', \'' . htmlspecialchars($user['username']) . '\')" title="删除用户">
+            $delete_btn = '<button class="btn btn-sm btn-warning me-1" data-user-id="' . (int)$user['id'] . '" data-username="' . htmlspecialchars($user['username'], ENT_QUOTES) . '" onclick="deleteUser(this.dataset.userId, this.dataset.username)" title="删除用户">
                              <i class="bi bi-person-dash"></i>
                            </button>';
-            
-            $blacklist_btn = '<button class="btn btn-sm btn-danger" onclick="blacklistUser(' . $user['id'] . ', \'' . htmlspecialchars($user['username']) . '\')" title="拉入黑名单">
+
+            $blacklist_btn = '<button class="btn btn-sm btn-danger" data-user-id="' . (int)$user['id'] . '" data-username="' . htmlspecialchars($user['username'], ENT_QUOTES) . '" onclick="blacklistUser(this.dataset.userId, this.dataset.username)" title="拉入黑名单">
                                <i class="bi bi-person-x"></i>
                              </button>';
         }
@@ -362,7 +378,7 @@ function render_blacklist_table($blacklist) {
                     <td>' . htmlspecialchars($item['reason']) . '</td>
                     <td>' . date('Y-m-d H:i', strtotime($item['created_at'])) . '</td>
                     <td>
-                        <button class="btn btn-sm btn-success" onclick="removeFromBlacklist(\'' . htmlspecialchars($item['email']) . '\')" title="移出黑名单">
+                        <button class="btn btn-sm btn-success" data-email="' . htmlspecialchars($item['email'], ENT_QUOTES) . '" onclick="removeFromBlacklist(this.dataset.email)" title="移出黑名单">
                             <i class="bi bi-check-circle"></i> 移除
                         </button>
                     </td>

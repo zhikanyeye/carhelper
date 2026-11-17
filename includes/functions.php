@@ -365,8 +365,9 @@ function generate_qr_code($user_identifier) {
             curl_setopt($ch, CURLOPT_TIMEOUT, 15); // 15秒超时
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10); // 10秒连接超时
             curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; CarFriend QR Generator)');
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            // 保持 SSL 证书校验，防止中间人篡改二维码内容
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
             
             $qr_content = curl_exec($ch);
             $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -694,9 +695,9 @@ function get_disk_usage() {
 // 邮箱验证功能
 // ============================================
 
-// 生成邮箱验证码
+// 生成邮箱验证码（密码学安全随机，输出仍为 32 位十六进制，与数据库字段长度兼容）
 function generate_verification_code() {
-    return md5(uniqid(mt_rand(), true));
+    return bin2hex(random_bytes(16));
 }
 
 // 发送邮箱验证码
@@ -2135,9 +2136,19 @@ function generate_anti_block_url($target_url) {
 }
 
 // 获取真实访问IP（考虑代理情况）
+// 仅当直连 IP 为内网/保留地址（即站点位于反向代理之后）时才信任代理转发头，
+// 否则客户端可伪造 X-Forwarded-For 等头绕过基于 IP 的频率限制
 function get_real_ip() {
-    $ip_keys = ['HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'HTTP_CLIENT_IP', 'REMOTE_ADDR'];
-    
+    $remote = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+    // 直连 IP 是公网地址：代理头不可信，直接采用
+    if ($remote !== 'unknown'
+        && filter_var($remote, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        return $remote;
+    }
+
+    // 位于代理之后：按顺序解析代理头
+    $ip_keys = ['HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'HTTP_CLIENT_IP'];
     foreach ($ip_keys as $key) {
         if (!empty($_SERVER[$key])) {
             $ips = explode(',', $_SERVER[$key]);
@@ -2147,8 +2158,8 @@ function get_real_ip() {
             }
         }
     }
-    
-    return $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
+    return $remote;
 }
 
 // 记录访问日志（用于分析封域情况）

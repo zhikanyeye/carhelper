@@ -10,14 +10,20 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/functions.php';
 
-// 权限检查 - 只有管理员可以访问
-if (!isset($_SESSION['user_id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+// 权限检查 - 只有管理员可以访问（与其他页面统一使用 is_admin() 口径）
+if (!is_logged_in() || !is_admin()) {
     header('Location: ' . SITE_URL . '/login');
     exit;
 }
 
 // 处理配置更新
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    // CSRF 校验（支持表单字段或 X-CSRF-Token 请求头）
+    $csrf_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        header('Location: ' . SITE_URL . '/login');
+        exit;
+    }
     if ($_POST['action'] === 'update_config') {
         // 这里可以添加动态更新配置的逻辑
         $success_message = '配置更新成功';
@@ -335,6 +341,7 @@ $stats = get_access_stats();
                             </button>
                             <form method="post" style="display: inline;">
                                 <input type="hidden" name="action" value="clear_logs">
+                                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                                 <button type="submit" class="btn btn-sm btn-outline-danger" 
                                         onclick="return confirm('确定要清空所有日志吗？')">
                                     <i class="bi bi-trash"></i> 清空日志

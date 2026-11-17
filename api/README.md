@@ -27,18 +27,21 @@ fetch('/api/admin.php?action=messages')
     .then(response => response.json())
     .then(data => console.log(data.html));
 
-// 执行自动清理
-fetch('/api/admin.php?action=auto_cleanup')
+// 执行自动清理（写操作，必须 POST 且携带 CSRF token）
+const formData = new FormData();
+formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').content);
+fetch('/api/admin.php?action=auto_cleanup', { method: 'POST', body: formData })
     .then(response => response.json())
     .then(data => console.log(data.message));
 ```
 
 ## 🛡️ 安全说明
 
-- 所有API接口都包含权限验证
+- 所有API接口都包含权限验证（需管理员登录）
+- 写操作（清理/删除/拉黑/邮箱验证等）要求 POST 请求并携带有效的 CSRF token（表单字段 `csrf_token` 或请求头 `X-CSRF-Token`）
 - 返回JSON格式数据
-- 包含CSRF防护
 - 错误时返回适当的HTTP状态码
+- **定时清理请使用 `cleanup_cron.php`（CLI 或携带 `?key=CRON_SECRET` 的 HTTP 请求），不要用本接口**——cron 无法携带管理员会话
 
 ## 📝 开发规范
 

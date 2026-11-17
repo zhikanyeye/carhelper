@@ -44,8 +44,19 @@ $error = '';
 
 // 处理表单提交
 if ($_POST) {
+    // CSRF 校验（支持表单字段或 X-CSRF-Token 请求头）
+    $csrf_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        $error = '安全验证失败，请刷新页面重试';
+    } else {
+        process_password_reset_request();
+    }
+}
+
+function process_password_reset_request() {
+    global $pdo, $message, $error;
     $email = trim($_POST['email'] ?? '');
-    
+
     if (empty($email)) {
         $error = '请输入邮箱地址';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -154,6 +165,7 @@ if ($_POST) {
                             </div>
                         <?php else: ?>
                             <form method="POST">
+                                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                                 <div class="mb-3">
                                     <label for="email" class="form-label">邮箱地址</label>
                                     <input type="email" class="form-control" id="email" name="email" 

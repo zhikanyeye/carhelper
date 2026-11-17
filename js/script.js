@@ -254,9 +254,14 @@ function makeAjaxRequest(url, method = 'GET', data = null) {
     return new Promise(function(resolve, reject) {
         const xhr = new XMLHttpRequest();
         xhr.open(method, url, true);
-        
+
         if (method === 'POST') {
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            // 自动附带 CSRF token（服务端同时支持表单字段与该请求头）
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            if (tokenMeta) {
+                xhr.setRequestHeader('X-CSRF-Token', tokenMeta.getAttribute('content'));
+            }
         }
         
         xhr.onreadystatechange = function() {

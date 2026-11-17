@@ -11,7 +11,11 @@ $action = $_GET['action'] ?? '';
 $message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($action === 'cleanup') {
+    // CSRF 校验（支持表单字段或 X-CSRF-Token 请求头）
+    $csrf_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        $message = '安全验证失败，请刷新页面重试';
+    } elseif ($action === 'cleanup') {
         // 执行数据库清理
         $days = (int)($_POST['cleanup_days'] ?? 90);
         $result = cleanup_old_data($days);
@@ -321,6 +325,7 @@ $password_reset_stats = get_password_reset_stats();
                         </div>
                         
                         <form method="POST" action="?action=cleanup" onsubmit="return confirm('确定要清理数据吗？此操作不可恢复！')">
+                            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
@@ -381,6 +386,7 @@ $password_reset_stats = get_password_reset_stats();
                                 </div>
                                 
                                 <form method="POST" action="?action=optimize_db" onsubmit="return confirm('确定要优化数据库吗？这将为表添加性能索引，提升系统速度。')">
+                                    <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="bi bi-speedometer2"></i> 立即优化数据库
                                     </button>
@@ -432,6 +438,7 @@ $password_reset_stats = get_password_reset_stats();
                                     </div>
                                     <div class="card-body">
                                         <form method="POST" action="?action=settings">
+                                            <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                                             <div class="mb-3">
                                                 <label class="form-label"><i class="bi bi-globe"></i> 网站名称</label>
                                                 <input type="text" name="site_name" class="form-control" 
@@ -588,9 +595,9 @@ $password_reset_stats = get_password_reset_stats();
                                                 <div id="cronMethod2" class="accordion-collapse collapse" data-bs-parent="#cronAccordion">
                                                     <div class="accordion-body">
                                                         <code class="d-block p-2 bg-dark text-light rounded small">
-                                                            0 2 * * * curl -s "<?php echo $_SERVER['HTTP_HOST']; ?>/api/admin.php?action=auto_cleanup"
+                                                            0 2 * * * curl -s "<?php echo (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST']; ?>/cleanup_cron.php?key=<?php echo defined('CRON_SECRET') ? CRON_SECRET : ''; ?>"
                                                         </code>
-                                                        <small class="text-muted">通过HTTP请求执行清理</small>
+                                                        <small class="text-muted">通过HTTP请求执行清理（密钥为 config.php 中的 CRON_SECRET，部署后请更换）</small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -894,6 +901,13 @@ $password_reset_stats = get_password_reset_stats();
 </div>
 
 <script>
+// 统一为管理 API 的 POST 请求附加 CSRF token
+function appendCsrfToken(formData) {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    formData.append('csrf_token', meta ? meta.getAttribute('content') : '');
+    return formData;
+}
+
 function loadUsers() {
     fetch('<?php echo SITE_URL; ?>/api/admin.php?action=users')
         .then(response => response.json())
@@ -927,7 +941,7 @@ function verifyUserEmail(userId) {
     
     fetch('<?php echo SITE_URL; ?>/api/admin.php?action=verify_user_email', {
         method: 'POST',
-        body: formData
+        body: appendCsrfToken(formData)
     })
     .then(response => response.json())
     .then(data => {
@@ -955,7 +969,7 @@ function deleteUser(userId, username) {
     
     fetch('<?php echo SITE_URL; ?>/api/admin.php?action=delete_user', {
         method: 'POST',
-        body: formData
+        body: appendCsrfToken(formData)
     })
     .then(response => response.json())
     .then(data => {
@@ -986,7 +1000,7 @@ function blacklistUser(userId, username) {
     
     fetch('<?php echo SITE_URL; ?>/api/admin.php?action=blacklist_user', {
         method: 'POST',
-        body: formData
+        body: appendCsrfToken(formData)
     })
     .then(response => response.json())
     .then(data => {
@@ -1046,7 +1060,7 @@ function addToBlacklist(event) {
     
     fetch('<?php echo SITE_URL; ?>/api/admin.php?action=add_blacklist', {
         method: 'POST',
-        body: formData
+        body: appendCsrfToken(formData)
     })
     .then(response => response.json())
     .then(data => {
@@ -1076,7 +1090,7 @@ function removeFromBlacklist(email) {
     
     fetch('<?php echo SITE_URL; ?>/api/admin.php?action=remove_blacklist', {
         method: 'POST',
-        body: formData
+        body: appendCsrfToken(formData)
     })
     .then(response => response.json())
     .then(data => {
@@ -1129,7 +1143,8 @@ function testAutoCleanup() {
     resultDiv.innerHTML = '<div class="alert alert-info">正在执行自动清理测试...</div>';
     
     fetch('api/admin.php?action=auto_cleanup', {
-        method: 'GET'
+        method: 'POST',
+        body: appendCsrfToken(new FormData())
     })
     .then(response => response.json())
     .then(data => {

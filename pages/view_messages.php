@@ -122,8 +122,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['batch_action'])) {
     }
 }
 
-// 获取筛选和分页参数
-$filter = $_GET['filter'] ?? 'all';
+// 获取筛选和分页参数（filter 白名单校验，防止反射型 XSS）
+$allowed_filters = ['all', 'unread', 'read'];
+$filter = in_array($_GET['filter'] ?? 'all', $allowed_filters, true) ? $_GET['filter'] : 'all';
 $page = max(1, (int)($_GET['page'] ?? 1));
 $per_page = 10;
 $offset = ($page - 1) * $per_page;

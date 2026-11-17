@@ -399,48 +399,14 @@ function isEmailConfigured() {
 }
 
 // 快速邮件发送 - 异步方式（推荐）
+// 统一走 queueEmail 队列（cache/email_queue/），由 includes/process_emails.php 消费
 function sendEmailFast($to, $subject, $message) {
     if (!isEmailConfigured()) {
         error_log("邮件发送失败：邮件未配置");
         return false;
     }
-    
-    // 将邮件信息保存到临时文件，由后台脚本异步处理
-    $emailData = [
-        'to' => $to,
-        'subject' => $subject,
-        'message' => $message,
-        'timestamp' => time(),
-        'attempts' => 0
-    ];
-    
-    $emailFile = __DIR__ . '/../cache/email_' . md5($to . $subject . time()) . '.json';
-    
-    // 确保cache目录存在
-    $cacheDir = dirname($emailFile);
-    if (!is_dir($cacheDir)) {
-        mkdir($cacheDir, 0755, true);
-    }
-    
-    if (file_put_contents($emailFile, json_encode($emailData))) {
-        // 触发后台处理（非阻塞方式）
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request(); // FastCGI环境下立即返回响应
-        }
-        
-        // 尝试异步执行邮件发送
-        if (PHP_OS_FAMILY === 'Windows') {
-            // Windows环境
-            pclose(popen('start /B php "' . __DIR__ . '/../process_emails.php"', 'r'));
-        } else {
-            // Linux/Unix环境
-            exec('php "' . __DIR__ . '/../process_emails.php" > /dev/null 2>&1 &');
-        }
-        
-        return true;
-    }
-    
-    return false;
+
+    return queueEmail($to, $subject, $message);
 }
 
 // 备用：立即发送邮件（简化版）

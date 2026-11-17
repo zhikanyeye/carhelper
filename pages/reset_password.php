@@ -72,8 +72,11 @@ if ($token) {
 if ($_POST && $valid_token) {
     $new_password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
-    
-    if (empty($new_password)) {
+
+    // CSRF 校验（支持表单字段或 X-CSRF-Token 请求头）
+    if (!verify_csrf_token($_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''))) {
+        $error = '安全验证失败，请刷新页面重试';
+    } elseif (empty($new_password)) {
         $error = '请输入新密码';
     } elseif (strlen($new_password) < 6) {
         $error = '密码至少需要6个字符';
@@ -161,6 +164,7 @@ if ($_POST && $valid_token) {
 
                         <?php if ($valid_token && !$message): ?>
                             <form method="POST" id="resetForm">
+                                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                                 <div class="mb-3">
                                     <label for="password" class="form-label">新密码</label>
                                     <input type="password" class="form-control" id="password" name="password" 

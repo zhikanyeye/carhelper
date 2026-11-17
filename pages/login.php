@@ -9,6 +9,51 @@ if (!file_exists(__DIR__ . '/../config/installed.lock')) {
 $error_message = '';
 $success_message = '';
 
+/**
+ * 登录防爆破：按 IP+用户名 记录失败次数，存储于 cache/login_attempts/
+ */
+function login_attempt_file($username) {
+    $ip = function_exists('get_real_ip') ? get_real_ip() : ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+    $dir = __DIR__ . '/../cache/login_attempts';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+    }
+    return $dir . '/' . md5(strtolower($username) . '|' . $ip) . '.json';
+}
+
+// 返回剩余冷却秒数，0 表示可正常登录
+function check_login_cooldown($username) {
+    $file = login_attempt_file($username);
+    if (!file_exists($file)) {
+        return 0;
+    }
+    $data = json_decode((string)file_get_contents($file), true) ?: [];
+    $now = time();
+    // 仅统计冷却时间窗口内的失败记录
+    $recent = array_values(array_filter($data, function($t) use ($now) {
+        return is_int($t) && ($now - $t) < LOGIN_COOLDOWN;
+    }));
+    if (count($recent) >= MAX_LOGIN_ATTEMPTS) {
+        $oldest = min($recent);
+        return max(1, LOGIN_COOLDOWN - ($now - $oldest));
+    }
+    return 0;
+}
+
+function record_login_failure($username) {
+    $file = login_attempt_file($username);
+    $data = file_exists($file) ? (json_decode((string)file_get_contents($file), true) ?: []) : [];
+    $data[] = time();
+    @file_put_contents($file, json_encode($data), LOCK_EX);
+}
+
+function clear_login_failures($username) {
+    $file = login_attempt_file($username);
+    if (file_exists($file)) {
+        @unlink($file);
+    }
+}
+
 // 如果已经登录，跳转到面板
 if (is_logged_in()) {
     header('Location: ' . (defined('SITE_URL') ? SITE_URL : '') . '/dashboard');
@@ -20,12 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 确保数据库连接可用
     ensure_database_connection();
     
-    // 临时禁用CSRF验证以便调试
-    $csrf_valid = true;
-    if (isset($_POST['csrf_token']) && !empty($_POST['csrf_token'])) {
-        $csrf_valid = verify_csrf_token($_POST['csrf_token']);
-    }
-    
+    // CSRF 验证：token 必须存在且匹配
+    $csrf_valid = !empty($_POST['csrf_token']) && verify_csrf_token($_POST['csrf_token']);
+
     if (!$csrf_valid) {
         $error_message = '安全验证失败，请重试';
     } else {
@@ -35,30 +77,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($username) || empty($password)) {
             $error_message = '请填写用户名和密码';
         } else {
-            // 验证用户
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ?");
-            $stmt->execute([$username, $username]);
-            $user = $stmt->fetch();
-            
-            if ($user && password_verify($password, $user['password'])) {
-                // 登录成功
-                $_SESSION['user_id'] = $user['id'];
+            // 防爆破：失败次数达到上限时强制冷却
+            $cooldown = check_login_cooldown($username);
+            if ($cooldown > 0) {
+                $error_message = '尝试次数过多，请 ' . max(1, (int)ceil($cooldown / 60)) . ' 分钟后再试';
+            } else {
+                // 验证用户
+                $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ?");
+                $stmt->execute([$username, $username]);
+                $user = $stmt->fetch();
+
+                if ($user && password_verify($password, $user['password'])) {
+                    // 登录成功，清除失败记录
+                    clear_login_failures($username);
+                    $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['email'] = $user['email'];
                 $_SESSION['email_verified'] = $user['email_verified'];
                 
-                // 重新生成session ID防止会话固定攻击
-                session_regenerate_id(true);
-                
-                // 检查邮箱验证状态
-                if (!$user['email_verified']) {
-                    header('Location: ' . (defined('SITE_URL') ? SITE_URL : '') . '/resend_verification');
+                    // 重新生成session ID防止会话固定攻击
+                    session_regenerate_id(true);
+
+                    // 检查邮箱验证状态
+                    if (!$user['email_verified']) {
+                        header('Location: ' . (defined('SITE_URL') ? SITE_URL : '') . '/resend_verification');
+                    } else {
+                        header('Location: ' . (defined('SITE_URL') ? SITE_URL : '') . '/dashboard');
+                    }
+                    exit;
                 } else {
-                    header('Location: ' . (defined('SITE_URL') ? SITE_URL : '') . '/dashboard');
+                    // 登录失败，记录失败次数用于防爆破
+                    record_login_failure($username);
+                    $error_message = '用户名或密码错误';
                 }
-                exit;
-            } else {
-                $error_message = '用户名或密码错误';
             }
         }
     }

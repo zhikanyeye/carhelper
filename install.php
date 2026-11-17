@@ -5,10 +5,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 检查是否已经安装
-if (file_exists('config/installed.lock')) {
-    header('Location: /');
-    exit;
+// 检查是否已经安装（绝对路径 + 硬退出，防止重复安装）
+if (file_exists(__DIR__ . '/config/installed.lock')) {
+    http_response_code(403);
+    exit('系统已安装。如需重新安装，请先删除 config/installed.lock 文件。');
 }
 
 $step = isset($_GET['step']) ? (int)$_GET['step'] : 1;
@@ -26,6 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (empty($db_host) || empty($db_name) || empty($db_user)) {
                 $error = '请填写所有必填项';
+            } elseif (!preg_match('/^[A-Za-z0-9_]{1,64}$/', $db_name)) {
+                // 数据库名仅允许字母/数字/下划线，防止反引号逃逸注入 DDL
+                $error = '数据库名仅允许字母、数字和下划线（最长64字符）';
             } else {
                 // 测试数据库连接
                 try {

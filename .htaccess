@@ -136,16 +136,8 @@
     </IfModule>
 </Files>
 
-# 保护清理脚本不被直接访问
-<Files "cleanup_cron.php">
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order allow,deny
-        Deny from all
-    </IfModule>
-</Files>
+# 清理脚本 cleanup_cron.php：脚本内部已做 CRON_SECRET 密钥校验（CLI/本机免验证），
+# 不在此处一刀切禁止，以便虚拟主机面板的 HTTP 定时任务可以触发
 
 # 基本PHP安全配置（仅在支持时启用）
 <IfModule mod_php.c>
@@ -189,6 +181,8 @@
     RewriteRule ^logs/ - [F,L]
     # 阻止直接访问cache目录
     RewriteRule ^cache/ - [F,L]
+    # 上传与二维码目录：仅允许静态资源，禁止执行脚本（防 webshell）
+    RewriteRule ^(uploads|qrcodes)/.*\.(php|phtml|phar)$ - [F,L,NC]
 </IfModule>
 
 # 保护日志文件不被直接访问

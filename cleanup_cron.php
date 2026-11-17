@@ -1,24 +1,34 @@
 <?php
 /**
  * 自动清理定时任务脚本
- * 
+ *
  * 使用方法：
- * 1. 在服务器上设置cron任务：
+ * 1. CLI 方式（有命令行权限的服务器）：
  *    0 2 * * * /usr/bin/php /path/to/cleanup_cron.php
- * 
- * 2. 或者通过curl访问API：
- *    0 2 * * * curl -s "https://your-domain.com/api/admin.php?action=auto_cleanup"
+ *
+ * 2. HTTP 方式（虚拟主机面板定时任务/curl），必须携带密钥：
+ *    0 2 * * * curl -s "https://your-domain.com/cleanup_cron.php?key=你的CRON_SECRET"
+ *    密钥定义于 config/config.php 的 CRON_SECRET，部署后请更换。
+ *
+ * 注意：不要通过 api/admin.php?action=auto_cleanup 做定时任务——
+ * 该接口需要管理员登录态，cron 无法携带会话。
  */
 
-// 防止通过浏览器直接访问
+require_once __DIR__ . '/config/config.php';
+
+// 访问控制：CLI 免验证；本机请求免验证；远程 HTTP 请求必须携带正确的 CRON_SECRET
+// （放在其他 require 之前，未授权请求不触发数据库连接）
 if (php_sapi_name() !== 'cli') {
-    // 如果不是命令行执行，检查是否是本地请求
-    $allowed_ips = ['127.0.0.1', '::1'];
-    if (!in_array($_SERVER['REMOTE_ADDR'] ?? '', $allowed_ips)) {
+    $is_local = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
+    $secret_ok = isset($_GET['key']) && defined('CRON_SECRET') && hash_equals(CRON_SECRET, (string)$_GET['key']);
+    if (!$is_local && !$secret_ok) {
         http_response_code(403);
         die('Access denied');
     }
 }
+
+require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/config/email.php';
 
 require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/includes/functions.php';

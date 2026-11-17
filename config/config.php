@@ -132,6 +132,10 @@ define('CACHE_LIFETIME', 3600); // 缓存1小时
 define('API_RATE_LIMIT', 100); // 每小时API调用限制
 define('QR_CODE_API', 'google'); // 二维码API提供商
 
+// 定时任务密钥：HTTP 方式触发 cleanup_cron.php 时必须携带 ?key=此值（CLI/本机访问免验证）
+// 🔴 安装或部署到新环境后请更换此随机值
+define('CRON_SECRET', '989d3469649977b4934b894f2e8bf1ba');
+
 // 安全头部
 if (!headers_sent()) {
     header('X-Content-Type-Options: nosniff');
@@ -140,13 +144,23 @@ if (!headers_sent()) {
     header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 
-// 错误报告
+// 错误报告：生产环境不显示错误但必须记录日志，便于排障
 if (DEBUG_MODE) {
     error_reporting(E_ALL);
     ini_set('display_errors', 1);
+    ini_set('log_errors', 1);
 } else {
-    error_reporting(0);
+    error_reporting(E_ALL);
     ini_set('display_errors', 0);
+    ini_set('display_startup_errors', 0);
+    ini_set('log_errors', 1);
+    if (defined('LOG_FILE') && LOG_FILE) {
+        $log_dir = dirname(__DIR__ . '/' . LOG_FILE);
+        if (!is_dir($log_dir)) {
+            @mkdir($log_dir, 0755, true);
+        }
+        ini_set('error_log', __DIR__ . '/../' . LOG_FILE);
+    }
 }
 
 // 时区设置

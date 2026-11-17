@@ -1,12 +1,21 @@
 <?php
-session_start();
+// 注意：不在此处提前 session_start()，由 functions.php 统一按 config.php 的安全配置启动
 require_once '../config/database.php';
 require_once '../config/email.php';
 require_once '../includes/functions.php';
 
+// 站点根地址（本页直接访问时可能位于 /pages/ 下，去掉该段得到根路径）
+if (!defined('SITE_URL')) {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+    $host = $_SERVER['HTTP_HOST'];
+    $dir_name = dirname(str_replace('\\', '/', $_SERVER['SCRIPT_NAME']));
+    $base_path = ($dir_name === '/' || $dir_name === '\\') ? '' : str_replace('/pages', '', $dir_name);
+    define('SITE_URL', $protocol . $host . $base_path);
+}
+
 // 检查是否为管理员
 if (!isset($_SESSION['user_id'])) {
-    header('Location: login.php');
+    header('Location: ' . SITE_URL . '/login');
     exit;
 }
 
@@ -15,14 +24,18 @@ $stmt->execute([$_SESSION['user_id']]);
 $user = $stmt->fetch();
 
 if (!$user || !$user['is_admin']) {
-    header('Location: dashboard.php');
+    header('Location: ' . SITE_URL . '/dashboard');
     exit;
 }
 
 // 处理操作
 $message = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
+    // CSRF 校验（支持表单字段或 X-CSRF-Token 请求头）
+    $csrf_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+    if (!verify_csrf_token($csrf_token)) {
+        $message = '安全验证失败，请刷新页面重试';
+    } elseif (isset($_POST['action'])) {
         switch ($_POST['action']) {
             case 'clean_queue':
                 $cleaned = cleanupEmailQueue();
@@ -123,11 +136,13 @@ include '../includes/header.php';
                         <div class="col-md-12">
                             <form method="post" class="d-inline">
                                 <input type="hidden" name="action" value="process_queue">
+                                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                                 <button type="submit" class="btn btn-primary">🚀 手动处理邮件队列</button>
                             </form>
-                            
+
                             <form method="post" class="d-inline">
                                 <input type="hidden" name="action" value="clean_queue">
+                                <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
                                 <button type="submit" class="btn btn-warning" onclick="return confirm('确定要清理过期的邮件队列吗？')">🧹 清理过期队列</button>
                             </form>
                             

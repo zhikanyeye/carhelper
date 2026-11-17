@@ -13,6 +13,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// CSRF 校验（支持表单字段或 X-CSRF-Token 请求头）
+$csrf_token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+if (!verify_csrf_token($csrf_token)) {
+    echo json_encode(['error' => 'CSRF 校验失败，请刷新页面重试']);
+    exit;
+}
+
 $message_id = (int)($_POST['message_id'] ?? 0);
 $user_id = $_SESSION['user_id'];
 
