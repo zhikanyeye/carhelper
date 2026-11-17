@@ -1,0 +1,372 @@
+/* 车友帮讯联系统 - 优化版样式表 */
+
+/* ===== 全局样式 ===== */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ===== 导航栏样式 ===== */
+.navbar-brand-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand-wrapper .site-logo {
+    font-size: 16px !important;
+    padding: 8px 16px !important;
+    margin-right: 0;
+}
+
+.navbar-brand-wrapper .logo-text {
+    font-size: 16px !important;
+}
+
+.navbar-brand-wrapper .logo-icon {
+    font-size: 20px !important;
+    margin-right: 8px !important;
+}
+
+.navbar-brand-wrapper .mail-icon {
+    width: 16px !important;
+    height: 16px !important;
+    font-size: 10px !important;
+    top: -4px !important;
+    right: -4px !important;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* ===== Logo展示区域 ===== */
+.brand-logo-showcase {
+    margin: 40px 0;
+    text-align: center;
+}
+
+.brand-logo-showcase .site-logo {
+    display: inline-flex !important;
+    margin: 20px;
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+/* ===== Hero区域 ===== */
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 80px 0;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="car" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse"><text x="25" y="35" text-anchor="middle" font-size="20" fill="rgba(255,255,255,0.05)">🚗</text></pattern></defs><rect width="100" height="100" fill="url(%23car)"/></svg>');
+    opacity: 0.1;
+}
+
+.hero-section .container {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===== 卡片样式 ===== */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.feature-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+.message-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-left: 4px solid #007bff;
+    transition: transform 0.2s ease;
+}
+
+.message-card:hover {
+    transform: translateX(5px);
+}
+
+.message-card.unread {
+    border-left-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.stats-card {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 10px;
+    padding: 30px;
+    text-align: center;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: scale(1.02);
+}
+
+.stats-card.border-primary {
+    border: 2px solid #0d6efd !important;
+    background: linear-gradient(45deg, #0d6efd, #084298);
+}
+
+.stats-card.border-success {
+    border: 2px solid #198754 !important;
+    background: linear-gradient(45deg, #198754, #0f5132);
+}
+
+.stats-card.border-warning {
+    border: 2px solid #ffc107 !important;
+    background: linear-gradient(45deg, #ffc107, #ffca2c);
+    color: #000;
+}
+
+.stats-card.border-info {
+    border: 2px solid #0dcaf0 !important;
+    background: linear-gradient(45deg, #0dcaf0, #3dd5f3);
+    color: #000;
+}
+
+/* ===== 二维码样式 ===== */
+.qr-code-container {
+    text-align: center;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.qr-code img {
+    max-width: 200px;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+/* ===== 按钮样式 ===== */
+.btn-primary {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #5a6fd8, #6a4190);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* ===== 表单样式 ===== */
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-check-input {
+    width: 1.25em;
+    height: 1.25em;
+    background-color: #fff;
+    background-image: none;
+    border: 2px solid #dee2e6;
+    border-radius: 0.25em;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+}
+
+.form-check-input:focus {
+    border-color: #667eea;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+}
+
+.form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+    background-size: 0.75em;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.form-check-input:checked:focus {
+    border-color: #556cd6;
+    box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+}
+
+.form-check-input:indeterminate {
+    background-color: #667eea;
+    border-color: #667eea;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
+}
+
+.form-check-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+/* ===== 提示框样式 ===== */
+.alert {
+    border-radius: 10px;
+    border: none;
+}
+
+.notification-alert {
+    position: relative;
+    z-index: 1050;
+    margin-bottom: 1rem !important;
+}
+
+.notification-alert .bi {
+    font-size: 1.1em;
+    vertical-align: middle;
+}
+
+.alert-success.notification-alert {
+    border-left: 4px solid #28a745;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.alert-success.notification-alert .bi-check-circle {
+    color: #28a745;
+}
+
+.alert-danger.notification-alert {
+    border-left: 4px solid #dc3545;
+}
+
+.alert-danger.notification-alert .bi-exclamation-triangle {
+    color: #dc3545;
+}
+
+/* ===== 页脚样式 ===== */
+footer {
+    margin-top: auto;
+}
+
+/* ===== 加载动画 ===== */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+/* ===== 动画定义 ===== */
+@keyframes logoFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideOutUp {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+}
+
+/* ===== 工具类 ===== */
+.fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* ===== 响应式设计 ===== */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 60px 0;
+    }
+
+    .hero-section h1 {
+        font-size: 2.5rem;
+    }
+
+    .stats-card {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-section {
+        padding: 40px 0;
+    }
+
+    .hero-section h1 {
+        font-size: 2rem;
+    }
+}
+
+/* ===== 性能优化 ===== */
+/* 使用will-change提示浏览器优化 */
+.feature-card,
+.message-card,
+.stats-card,
+.btn-primary {
+    will-change: transform;
+}
+
+/* 减少重绘 */
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}

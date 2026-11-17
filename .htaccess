@@ -1,0 +1,209 @@
+# 车友帮讯联系统 - 虚拟主机优化 .htaccess 配置
+# 适用于大多数共享主机环境
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 如果项目在子目录中，请取消注释并设置正确的目录名
+    # 例如，如果URL是 http://example.com/myapp/，则设置为 /myapp/
+    # RewriteBase /
+
+    # 虚拟主机环境自动检测基础路径
+    # 如果在子目录中部署，可以自动检测路径
+    RewriteCond %{REQUEST_URI} ^(.+)?/[^/]*$
+    RewriteRule ^.*$ - [E=BASE:%1]
+
+    # 如果请求的是一个已存在的文件，则直接访问
+    RewriteCond %{REQUEST_FILENAME} !-f
+    # 如果请求的是一个已存在的目录，则直接访问
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # 将所有其他请求重写到 index.php，支持UTF-8编码
+    RewriteRule ^(.*)$ index.php?url=$1 [L,QSA,B]
+</IfModule>
+
+# ============================================
+# 性能优化 - 静态资源缓存
+# ============================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # 图片缓存 1 周
+    ExpiresByType image/jpeg "access plus 1 week"
+    ExpiresByType image/png "access plus 1 week"
+    ExpiresByType image/gif "access plus 1 week"
+    ExpiresByType image/svg+xml "access plus 1 week"
+    ExpiresByType image/webp "access plus 1 week"
+    ExpiresByType image/x-icon "access plus 1 month"
+
+    # CSS和JavaScript缓存 1 周
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType text/javascript "access plus 1 week"
+
+    # 字体缓存 1 个月
+    ExpiresByType font/woff "access plus 1 month"
+    ExpiresByType font/woff2 "access plus 1 month"
+    ExpiresByType application/font-woff "access plus 1 month"
+    ExpiresByType application/font-woff2 "access plus 1 month"
+
+    # HTML和PHP不缓存
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# 使用Header模块设置缓存（备用方案）
+<IfModule mod_headers.c>
+    # 静态资源缓存
+    <FilesMatch "\.(jpg|jpeg|png|gif|svg|webp|ico)$">
+        Header set Cache-Control "max-age=604800, public"
+    </FilesMatch>
+
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "max-age=604800, public"
+    </FilesMatch>
+
+    <FilesMatch "\.(woff|woff2|ttf|eot)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+
+    # HTML和PHP不缓存
+    <FilesMatch "\.(php|html)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+</IfModule>
+
+# ============================================
+# 压缩优化 - Gzip压缩
+# ============================================
+<IfModule mod_deflate.c>
+    # 压缩HTML、CSS、JavaScript、文本、XML等
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE image/svg+xml
+
+    # 排除已压缩的文件
+    SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|zip|gz|rar)$ no-gzip
+</IfModule>
+
+# 基本文件保护
+<FilesMatch "\.(sql|log|ini|bak)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 保护配置文件
+<Files "config.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+<Files "database.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# 保护email配置文件
+<Files "email.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# 保护清理脚本不被直接访问
+<Files "cleanup_cron.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>
+
+# 基本PHP安全配置（仅在支持时启用）
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag display_startup_errors Off
+    php_flag log_errors On
+    php_flag expose_php Off
+</IfModule>
+
+# 基本安全头部（仅在支持时启用）
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# 防止目录浏览 - 兼容性方法
+<IfModule mod_autoindex.c>
+    IndexIgnore *
+</IfModule>
+
+# 基本文件类型保护
+<FilesMatch "\.(htaccess|htpasswd|ini|log|sh|sql|bak|conf)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 保护敏感目录
+<IfModule mod_rewrite.c>
+    # 阻止直接访问config目录
+    RewriteRule ^config/ - [F,L]
+    # 阻止直接访问includes目录
+    RewriteRule ^includes/ - [F,L]
+    # 阻止直接访问logs目录（错误日志保护）
+    RewriteRule ^logs/ - [F,L]
+    # 阻止直接访问cache目录
+    RewriteRule ^cache/ - [F,L]
+</IfModule>
+
+# 保护日志文件不被直接访问
+<FilesMatch "\.(log|txt)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 设置日志文件大小限制（通过PHP配置）
+<IfModule mod_php.c>
+    php_value log_errors_max_len 1024
+    php_value error_log_max_size 5242880
+</IfModule>

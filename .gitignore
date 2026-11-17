@@ -1,0 +1,29 @@
+# 运行时生成的敏感/临时文件
+config/database.php
+config/installed.lock
+installed.lock
+
+# 运行时目录内容（保留目录占位）
+uploads/*
+!uploads/.gitkeep
+logs/*
+!logs/README.md
+cache/*
+!cache/.gitkeep
+qrcodes/*
+!qrcodes/.gitkeep
+
+# 日志
+*.log
+*.log.*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / 编辑器
+.idea/
+.vscode/
+.kiro/
+*.swp
